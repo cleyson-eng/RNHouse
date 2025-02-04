@@ -1,0 +1,47 @@
+POST https://avapineanl.neoenergia.com/areanaologada/2.0.0/autentica
+	{
+		canalSolicitante:"AGU"
+		recaptcha:"<?????>"
+		senha:"<senha>"
+		usuario:"<documento>"
+	}
+=>
+	{
+		"token":{"ne":<token>,"se":<tokenSE>}
+	}
+
+//browser stract:
+token: localStorage.token
+
+
+================== por casa ===============
+GET https://apineprd.neoenergia.com/protocolo/1.1.0/obterProtocolo?distribuidora=COSE&canalSolicitante=AGR&documento=${documento}&codCliente=${codigo_casa}&recaptchaAnl=true&regiao=NE
+	header bearer <token>
+=>
+	{
+		protocoloLegado:"<protocolo>"
+	}
+=================== faturas ===============
+GET https://apineprd.neoenergia.com/multilogin/2.0.0/servicos/faturas/ucs/faturas?codigo=${casa_codigo}&documento=${documento}&canalSolicitante=AGR&usuario=WSO2_CONEXAO&protocolo=${protocolo}&tipificacao=1010602&byPassActiv=&documentoSolicitante=${documento}&documentoCliente=${documento}&distribuidora=COSERN&tipoPerfil=1
+	header bearer <token>
+=>
+	{"faturas": [
+        {
+            "statusFatura": "Vencida|Pago",
+            "dataVencimento": "2025-01-27",
+            "mesReferencia": "2025/01",
+            "numeroFatura": "<numero_fatura>",
+            "valorEmissao": "144.28",
+        }
+	]}
+================== pdf fatura ==============
+GET https://apineprd.neoenergia.com/multilogin/2.0.0/servicos/faturas/${numero_fatura}/pdf?codigo=${casa_codigo}&protocolo=${protocolo}&tipificacao=1031607&usuario=WSO2_CONEXAO&canalSolicitante=AGR&motivo=10&distribuidora=COSERN&regiao=NE&tipoPerfil=1&documento=${documento}&documentoSolicitante=${documento}&byPassActiv=
+	header bearer <token>
+=>
+{
+	fileData:"..." //<base 64 PDF
+	fileExtension:".pdf"
+	fileName:"000855916630"
+	fileSize:"75385"
+}
+
