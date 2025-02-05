@@ -1,0 +1,52 @@
+login https://agencia.caern.com.br/#/contas
+POST https://agencia.caern.com.br/rest/gerar_token
+	authorization: recaptcha: <<< problem
+	{
+		cpfCnpj:"<documento>"
+		destino:"/contas?matricula=&cpfCnpj=<documento>&incluirPagas=false"
+		matricula:""
+	}
+=>
+	{
+		"status": 200,
+		"content": true
+	}
+
+//link enviado para email...
+https://agencia.caern.com.br/#/contas?matricula=&cpfCnpj=<documento>&incluirPagas=false&hash=<token>
+
+======== contas
+GET https://agencia.caern.com.br/rest/conta?matricula=&cpf=<documento>&todos_imoveis=true
+	authorization: recaptcha:<token>
+=>
+	{
+		"status": 200,
+		"content": [
+			{
+				"inscricao": "N",
+           		"endereco": "RUA, NUMERO, BAIRRO, CIDADE - CEP",
+				"latitude": 
+				"longitude": -35.233314871898,
+				"contas": [
+					{
+						"id": number,
+						"anoMes": "01/2025",
+						"dataVencimento": "23/01/2025",
+						"valor": 82.68,
+						"situacao": "NORMAL",
+						"paga": false
+					}
+				],
+			},
+		]
+	}
+
+
+======== contas => fatura
+GET https://agencia.caern.com.br/rest/segundavia/<fatura-id>?autoprint=false&cpf=<documento>&matricula=<matricula>
+	authorization: 75d34a25634bdbaa95da748cbe71fce7
+=>
+	{
+		content:PDF-base64
+		status:200
+	}

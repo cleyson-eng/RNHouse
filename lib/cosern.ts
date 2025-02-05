@@ -84,7 +84,7 @@ export async function getBoleto(documento:string, token:string, codigo_casa:stri
 		fileSize:string
 		fault:boolean
 	};
-	if (r.fault) throw "[getFaturas] invalid credentials";
+	if (r.fault) throw "[getBoleto] invalid credentials";
 	return decodeBase64(r.fileData);
 }
 export function requestLoginToken(tip:string):string {

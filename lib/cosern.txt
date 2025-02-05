@@ -1,7 +1,7 @@
 POST https://avapineanl.neoenergia.com/areanaologada/2.0.0/autentica
 	{
 		canalSolicitante:"AGU"
-		recaptcha:"<?????>"
+		recaptcha:"<?????>"  <<<<<problema
 		senha:"<senha>"
 		usuario:"<documento>"
 	}
@@ -10,18 +10,17 @@ POST https://avapineanl.neoenergia.com/areanaologada/2.0.0/autentica
 		"token":{"ne":<token>,"se":<tokenSE>}
 	}
 
-//browser stract:
+//browser extract token:
 token: localStorage.token
 
-
-================== por casa ===============
+================== casa ===============
 GET https://apineprd.neoenergia.com/protocolo/1.1.0/obterProtocolo?distribuidora=COSE&canalSolicitante=AGR&documento=${documento}&codCliente=${codigo_casa}&recaptchaAnl=true&regiao=NE
 	header bearer <token>
 =>
 	{
 		protocoloLegado:"<protocolo>"
 	}
-=================== faturas ===============
+=================== casa => faturas ===============
 GET https://apineprd.neoenergia.com/multilogin/2.0.0/servicos/faturas/ucs/faturas?codigo=${casa_codigo}&documento=${documento}&canalSolicitante=AGR&usuario=WSO2_CONEXAO&protocolo=${protocolo}&tipificacao=1010602&byPassActiv=&documentoSolicitante=${documento}&documentoCliente=${documento}&distribuidora=COSERN&tipoPerfil=1
 	header bearer <token>
 =>
@@ -34,7 +33,7 @@ GET https://apineprd.neoenergia.com/multilogin/2.0.0/servicos/faturas/ucs/fatura
             "valorEmissao": "144.28",
         }
 	]}
-================== pdf fatura ==============
+================== casa => faturas => pdf fatura ==============
 GET https://apineprd.neoenergia.com/multilogin/2.0.0/servicos/faturas/${numero_fatura}/pdf?codigo=${casa_codigo}&protocolo=${protocolo}&tipificacao=1031607&usuario=WSO2_CONEXAO&canalSolicitante=AGR&motivo=10&distribuidora=COSERN&regiao=NE&tipoPerfil=1&documento=${documento}&documentoSolicitante=${documento}&byPassActiv=
 	header bearer <token>
 =>
