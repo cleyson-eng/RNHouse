@@ -4,7 +4,8 @@ Para facilitar o gerenciamento de casas de aluguel com inquilinos que se negam a
 ## Roadmap
 - [x] Sincronizar faturas
 - [ ] Login automático
-- [ ] Interface WEB
+- [x] Interface WEB
+- [ ] Mapa
 
 ## Estruturamento dos dados
 Na pasta de dados:

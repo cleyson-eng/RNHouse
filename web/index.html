@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>HouseRN</title>
+	<style>
+html, body {
+	margin:0;
+	padding:0;
+}
+body {
+	font-size:0.9em;
+}
+* {
+	box-sizing: border-box;
+}
+.card {
+	position: relative;
+	border-radius: 0.5em;
+	border: #777 1px solid;
+	margin:0.5em;
+	padding:0;
+	width: calc(100% - 1em);
+	overflow-x: hidden;
+}
+.card .img {
+	position:absolute;
+	top:0.2em;
+	left:0.2em;
+	border-radius: 0.4em;
+	background-color: black;
+	width: 8em;
+	height: 7em;
+	background-size: contain;
+	background-repeat: no-repeat;
+	background-position: center;
+}
+.card .data {
+	position: relative;
+	padding:0.5em 0.5em 0.5em 8.4em;
+	min-height:7.5em;
+}
+.card .faturas {
+	border-top:#777 1px solid;
+	padding: 0.5em;
+}
+.card .faturas p {
+	margin: 0 0 0.2em 0;
+}
+.card .faturas a {
+	background-color:rgb(100, 170, 100);
+	float:right;
+	padding:0.1em 0.7em;
+	border-radius: 0.4em;
+	color:white;
+	text-decoration: none;
+
+}
+.card .faturas a:hover {
+	background-color: rgb(85, 142, 85);
+}
+.card h1, .card h2 {
+	margin: 0;
+	padding: 0;
+}
+.card h1 {
+	font-size: 1.2em;
+	font-weight: 900;
+	line-height: 100%;
+	color: #111;
+}
+.card h2 {
+	font-size: 1.2em;
+	font-weight: 400;
+	line-height: 100%;
+	color: #333;
+}
+.ok {
+	color:green;
+}
+.nok {
+	font-weight: bold;
+	color:red;
+}
+#aba {
+	background-color: white;
+	box-shadow: 0 0 1.5em #333;
+	position: fixed;
+	overflow-y: auto;
+	top:0;
+	right:0;
+	transition: width 2s, right 2s, height 2s;
+}
+.aba_full {
+	width: 100%;
+	height: 100%;
+}
+@media (orientation: landscape) {
+	.aba_half {
+		width: 50em;
+		height: 100%;
+	}
+	.aba_min {
+		right: -45em !important;
+		width: 50em;
+		height: 100%;
+	}
+}
+@media (orientation: portrait) {
+	.aba_half {
+		width: 100%;
+		height: 75%;
+	}
+	.aba_min {
+		width: 100%;
+		height: 5%;
+	}
+}
+	</style>
+	<script>
+function gerar_card_fatura(symbol, prefix, x) {
+	const ref = new Date(x.dataRef);
+	const v = new Date(x.dataVenc);
+	return `<p>${symbol} ${(ref.getMonth()+1).toString().padStart(2,'0')}/${ref.getFullYear()%100} - Vence: ${v.getDate()}/${v.getMonth()+1}/${v.getFullYear()%100} <a href="${prefix+x.numeroBoleto}.pdf">abrir</a></p>`
+}
+function gerar_card(casa, faturas) {
+	let txt = `<div class='card'  id="casa_${casa.id}">
+		<div class='img' style='background-image: url("/img/${casa.id}.png");'></div>
+		<div class='data'>
+			<h1>${casa.numero} - Rua ${casa.rua}</h1>
+			<h2>${casa.bairro} - ${casa.cidade}</h2>
+			<div><span class="${faturas.agua.length?"nok":"ok"}">🌊 ${faturas.agua.length}</span>  ${casa.caern_userid}</div>
+			<div><span class="${faturas.luz.length?"nok":"ok"}">⚡ ${faturas.luz.length}</span>  ${casa.cosern_userid}</div>
+		</div>`
+	if (faturas.agua.length > 0)
+		txt += '<div class="faturas">' + faturas.agua.map((x)=>gerar_card_fatura('🌊', '/caern_fatura/'+casa.codigo_caern+'_',x)).join('') + '</div>';
+	if (faturas.luz.length > 0)
+		txt += '<div class="faturas">' + faturas.luz.map((x)=>gerar_card_fatura('⚡','/cosern_fatura/'+casa.codigo_cosern+'_',x)).join('') + '</div>';
+	return txt + '</div>';
+}
+let data;
+const agora = Date.now();
+async function main () {
+	data = JSON.parse(await (await fetch('/data.json')).text());
+	document.getElementById('cards').innerHTML = data.casas.map((casa, i)=> gerar_card(casa, data.faturas[i])).join('');
+	let bairros = {};
+	let ruas = {};
+	data.casas.forEach(x => {
+		bairros[x.bairro] = true;
+		ruas[x.rua] = true;
+	});
+	document.getElementById('filter_bairro').innerHTML = '<option value="">bairro?</option>'+
+		Object.keys(bairros).map((x)=>`<option value="${x}">em ${x}</option>`);
+	document.getElementById('filter_rua').innerHTML = '<option value="">rua?</option>'+
+		Object.keys(ruas).map((x)=>`<option value="${x}">na rua ${x}</option>`);
+}
+let prevent_apply_filter = false;
+function apply_filter() {
+	if (prevent_apply_filter) return;
+	const vencimento = parseInt(document.getElementById("filter_vencimento").value);
+	const bairro = document.getElementById("filter_bairro").value;
+	const rua = document.getElementById("filter_rua").value;
+	data.casas.forEach((x,i)=>{
+		let venc = -1;
+		data.faturas[i].agua.forEach((y)=>{
+			const days = Math.abs(new Date(y.dataVenc).getTime()-agora)/(3600000*24);
+			if (days > venc) venc = days;
+		});
+		data.faturas[i].luz.forEach((y)=>{
+			const days = Math.abs(new Date(y.dataVenc).getTime()-agora)/(3600000*24);
+			if (days > venc) venc = days;
+		});
+		const visible = (
+			(vencimento <= venc) &&
+			x.bairro.indexOf(bairro)>=0 &&
+			x.rua.indexOf(rua)>=0
+		);
+		document.getElementById('casa_'+x.id).style.display = visible?'block':'none';
+	});
+}
+function clear_filters() {
+	prevent_apply_filter = true;
+	document.getElementById("filter_vencimento").value = '-1';
+	document.getElementById("filter_bairro").value = '';
+	document.getElementById("filter_rua").value = '';
+	prevent_apply_filter = false;
+	apply_filter();
+}
+	</script>
+</head>
+<body onload="main();">
+	<div id="aba" class="aba_min">
+		<form style="padding:1em;">
+			Filtrar:
+			<select id="filter_vencimento" onchange="apply_filter();">
+				<option value="-1">por vencimento</option>
+				<option value="0">vencidas</option>
+				<option value="15">venceu a +15 dias</option>
+				<option value="30">venceu a +1 mês</option>
+			</select>
+			<select id="filter_bairro" onchange="apply_filter();">
+				<option value="">bairro?</option>
+			</select>
+			<select id="filter_rua" onchange="apply_filter();">
+				<option value="">rua?</option>
+			</select>
+			<button onclick="clear_filters()">Limpar</button>
+		</form>
+		<div id="cards">
+			<div class='card'>
+				<div class='img' style='background-image: url("/img/1.png");'></div>
+				<div class='data'>
+					<h1>[Num] - [RUA]</h1>
+					<h2>[bairro] - [cidade]</h2>
+					<div style="color:green">🌊 0</div>
+					<div style="color:green">⚡ 0</div>
+				</div>
+				<div class='faturas'>
+					<p>🌊 01/24 - vence: 1/1/2024 <a href="#">abrir</a></p>
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+</html>

@@ -1,4 +1,6 @@
 import { decodeBase64, encodeBase64 } from "jsr:@std/encoding/base64";
+import { Fatura } from "./cosern.ts";
+
 function makeHeadersToken(token:string):{[name:string]:string} {
 	return {
 		"accept":"application/json, text/plain, */*",
@@ -23,13 +25,6 @@ export enum FaturaStatus {
 	VENCIDA,
 	UNK
 }
-export interface Fatura {
-	status:FaturaStatus
-	dataRef:Date,
-	dataVenc:Date,
-	valor:number,
-	numeroBoleto:string
-};
 export interface Unidade {
 	inscricao:string,
 	endereco:string,
@@ -57,6 +52,7 @@ export async function getFaturas(documento:string, token:string):Promise<Unidade
 		}[]
 	};
 	if (r.status && r.status == 200) {} else throw "[getFaturas] failed "+t;
+	console.log(r);
 
 	return r.content.map((x)=>{
 		const faturas = x.contas.map((f)=>{
@@ -64,7 +60,7 @@ export async function getFaturas(documento:string, token:string):Promise<Unidade
 			const venc = f.dataVencimento.split('/');
 			return {
 				dataRef:new Date(parseInt(ref[1]),parseInt(ref[0])-1),
-				dataVenc:new Date(parseInt(venc[2]),parseInt(ref[1])-1,parseInt(ref[0])),
+				dataVenc:new Date(parseInt(venc[2]),parseInt(venc[1])-1,parseInt(venc[0])),
 				numeroBoleto:f.id+"",
 				valor:f.valor,
 				status:FaturaStatus.VENCIDA

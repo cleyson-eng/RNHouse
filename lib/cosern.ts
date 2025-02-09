@@ -55,25 +55,30 @@ export async function getFaturas(documento:string, token:string, codigo_casa:str
 		fault:boolean
 	};
 	if (r.fault) throw "[getFaturas] invalid credentials";
-	return r.faturas.map((x)=>{
-		const venc = x.dataVencimento.split('-');
-		const ref = x.mesReferencia.split('/');
-		let status = FaturaStatus.UNK;
-		switch(x.statusFatura) {
-		case "A Vencer":
-		case "Vencida":
-			status = FaturaStatus.VENCIDA;break;
-		case "Pago":
-			status = FaturaStatus.PAGO;
-		}
-		return {
-			status,
-			dataRef:new Date(parseInt(ref[0]), parseInt(ref[1])-1),
-			dataVenc:new Date(parseInt(venc[0]), parseInt(venc[1])-1, parseInt(venc[2])),
-			valor:parseFloat(x.valorEmissao),
-			numeroBoleto:x.numeroFatura
-		};
-	});
+	try {
+		return r.faturas.map((x)=>{
+			const venc = x.dataVencimento.split('-');
+			const ref = x.mesReferencia.split('/');
+			let status = FaturaStatus.UNK;
+			switch(x.statusFatura) {
+			case "A Vencer":
+			case "Vencida":
+				status = FaturaStatus.VENCIDA;break;
+			case "Pago":
+				status = FaturaStatus.PAGO;
+			}
+			return {
+				status,
+				dataRef:new Date(parseInt(ref[0]), parseInt(ref[1])-1),
+				dataVenc:new Date(parseInt(venc[0]), parseInt(venc[1])-1, parseInt(venc[2])),
+				valor:parseFloat(x.valorEmissao),
+				numeroBoleto:x.numeroFatura
+			} as Fatura;
+		});
+	} catch (e) {
+		console.log(r);
+		throw e;
+	}
 }
 export async function getBoleto(documento:string, token:string, codigo_casa:string, protocolo:string, numero_fatura:string):Promise<Uint8Array> {
 	const url = `https://apineprd.neoenergia.com/multilogin/2.0.0/servicos/faturas/${numero_fatura}/pdf?codigo=${codigo_casa}&protocolo=${protocolo}&tipificacao=1031607&usuario=WSO2_CONEXAO&canalSolicitante=AGR&motivo=10&distribuidora=COSERN&regiao=NE&tipoPerfil=1&documento=${documento}&documentoSolicitante=${documento}&byPassActiv=`;

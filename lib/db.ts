@@ -2,7 +2,11 @@ import * as path from "jsr:@std/path";
 import {existsSync} from "https://deno.land/std/fs/mod.ts";
 import * as cosern from './cosern.ts';
 import * as caern from './caern.ts';
+import { open_csv, save_csv } from "./csv.ts";
 
+function sleep(ms:number) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
 export interface Usuario {
 	id:string,
 	documento:string,
@@ -10,7 +14,7 @@ export interface Usuario {
 	caern_login:string
 };
 export interface Casa {
-	house_id:string,
+	id:string,
 	cosern_userid:string,
 	codigo_cosern:string,
 	caern_userid:string,
@@ -36,7 +40,7 @@ export const TEMPLATE_USUARIO = {
 	caern_login:""
 } as Usuario;
 const TEMPLATE_CASA = {
-	house_id:"",
+	id:"",
 	cosern_userid:"",
 	codigo_cosern:"",
 	caern_userid:"",
@@ -50,65 +54,26 @@ const TEMPLATE_CASA = {
 } as Casa;
 
 
-function cast_type(x:string ,t:any):any {
-	if (t instanceof Date)
-		return new Date(x);
-	if (typeof t == "boolean")
-		return x.toLowerCase().trim().startsWith("t");
-	if (typeof t == "number") {
-		if (t == 1)
-			return parseInt(x);
-		return parseFloat(x);
-	}
-	return x;
-}
-
-const UPDATE_RATE = 10*24*3600*1000//<ms;
-export function open_csv<T> (file:string, temp:T) {
-	const ks = Object.keys(temp as {});
-	return Deno.readTextFileSync(file).split('\n')
-	.filter((x)=>!x.startsWith("sep=,")&&x.length>1)
-	.map((x)=>{
-		let r:{[p:string]:string} = {};
-		(JSON.parse(`[${x}]`) as string[]).forEach((el, i)=>{
-			//@ts-ignore 7053
-			r[ks[i]] = cast_type(el,temp[ks[i]]);
-		});
-		return r as T;
-	});
-}
-export function save_csv<T> (file:string, data:T[] ,temp:T) {
-	const ks = Object.keys(temp as {});
-	let txt = 'sep=,';
-	data.forEach((row)=>{
-		txt+='\n';
-		//@ts-ignore
-		const line=JSON.stringify(ks.map((key)=>row[key]));
-		txt = line.substring(1,line.length-1);
-	});
-	Deno.writeTextFileSync(file, txt);
-}
-function hasValue(x:string) {
-	x = x.trim();
-	if (x.length < 4) return false;
-	if (x.startsWith('<')) return false;
-	return true;
-}
+const UPDATE_RATE = 10*24*3600*1000;//ms - 10 dias
 
 export class DB {
 	dir:string
 	dir_cosern_boletos:string
 	dir_caern_boletos:string
+	dir_img:string
 	usuarios:Usuario[]
 	casas:Casa[]
 	constructor(dir:string) {
 		this.dir = dir;
 		this.dir_cosern_boletos = path.resolve(dir, 'cosern_data');
 		this.dir_caern_boletos = path.resolve(dir, 'caern_data');
+		this.dir_img = path.resolve(dir,'img');
 		if (!existsSync(this.dir_cosern_boletos))
 			Deno.mkdirSync(this.dir_cosern_boletos);
 		if (!existsSync(this.dir_caern_boletos))
 			Deno.mkdirSync(this.dir_caern_boletos);
+		if (!existsSync(this.dir_img))
+			Deno.mkdirSync(this.dir_img);
 		this.usuarios = open_csv<Usuario>(path.resolve(dir, 'usuario.csv'),
 			TEMPLATE_USUARIO);
 		this.casas = open_csv<Casa>(path.resolve(dir, 'casas.csv'),
@@ -144,8 +109,10 @@ export class DB {
 				}
 			}
 			const protocolo = await cosern.getProtocolo(u.documento, token, casa.codigo_cosern);
+			sleep(500);
 			//vencidas
 			const faturas = (await cosern.getFaturas(u.documento, token, casa.codigo_cosern, protocolo)).filter((x)=>x.status == cosern.FaturaStatus.VENCIDA);
+			sleep(500);
 			console.log(`Faturas vencidas: ${faturas.length}`);
 			save_csv<cosern.Fatura>(f_path, faturas, TEMPLATE_FATURA);
 			for (let i2 = 0; i2 < faturas.length; i2++) {
@@ -156,13 +123,14 @@ export class DB {
 					const data = await cosern.getBoleto(u.documento, token, casa.codigo_cosern, protocolo, fatura.numeroBoleto);
 					console.log(fatura_path);
 					Deno.writeFileSync(fatura_path, data);
+					sleep(200);
 				}
 			}
 		}
 	}
 	async cosern_update() {
 		for (let i = 0; i < this.usuarios.length; i++) {
-			if (hasValue(this.usuarios[i].cosern_login))
+			if (this.usuarios[i].cosern_login.length>0)
 				await this.cosern_update_user(i);
 		}
 	}
@@ -211,7 +179,7 @@ export class DB {
 	}
 	async caern_update() {
 		for (let i = 0; i < this.usuarios.length; i++) {
-			if (hasValue(this.usuarios[i].caern_login))
+			if (this.usuarios[i].caern_login.length>0)
 				await this.caern_update_user(i);
 		}
 	}
@@ -219,6 +187,18 @@ export class DB {
 		await this.cosern_update();
 		await this.caern_update();
 	}
-}
-const d = new DB("../data");
-console.log(d);
+	get_casa_faturas(compania:"cosern"|"caern",index:number):cosern.Fatura[] {
+		let fpath = '';
+		switch(compania) {
+		case 'cosern':
+			fpath = path.resolve(this.dir_cosern_boletos, this.casas[index].codigo_cosern+".csv");
+			break;
+		case 'caern':
+			fpath = path.resolve(this.dir_caern_boletos, this.casas[index].codigo_caern+".csv");
+			break;
+		}
+		if (!existsSync(fpath))
+			return [];
+		return open_csv<cosern.Fatura>(fpath, TEMPLATE_FATURA);
+	}
+};
