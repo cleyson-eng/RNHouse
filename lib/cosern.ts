@@ -46,7 +46,7 @@ export async function getFaturas(documento:string, token:string, codigo_casa:str
 	const t = await (await fetch(url, {headers:makeHeadersToken(token), method:'GET'})).text();
 	const r = JSON.parse(t) as {
 		faturas:{
-			statusFatura:"Vencida"|"Pago",
+			statusFatura:"Vencida"|"Pago"|"A Vencer",
 			dataVencimento:string,//anoo-me-di
 			mesReferencia:string,//anoo/me
 			numeroFatura:string,
@@ -60,6 +60,7 @@ export async function getFaturas(documento:string, token:string, codigo_casa:str
 		const ref = x.mesReferencia.split('/');
 		let status = FaturaStatus.UNK;
 		switch(x.statusFatura) {
+		case "A Vencer":
 		case "Vencida":
 			status = FaturaStatus.VENCIDA;break;
 		case "Pago":

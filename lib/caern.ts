@@ -49,10 +49,10 @@ export async function getFaturas(documento:string, token:string):Promise<Unidade
 			longitude:number,
 			contas: {
 				id: number,
-					anoMes: string,
-					dataVencimento: string,
-					valor: number,
-					paga:boolean
+				anoMes: string,
+				dataVencimento: string,
+				valor: number,
+				paga:boolean
 			}[]
 		}[]
 	};

@@ -3,28 +3,6 @@ import {existsSync} from "https://deno.land/std/fs/mod.ts";
 import * as cosern from './cosern.ts';
 import * as caern from './caern.ts';
 
-const UPDATE_RATE = 10*24*3600*1000//<ms;
-export function open_csv<T> (file:string, temp:T) {
-	const ks = Object.keys(temp as {});
-	return Deno.readTextFileSync(file).split('\n').map((x)=>{
-		let r:{[p:string]:string} = {};
-		(JSON.parse(`[${x}]`) as string[]).forEach((el, i)=>
-			r[ks[i]] = el
-		);
-		return r as T;
-	});
-}
-export function save_csv<T> (file:string, data:T[]) {
-	const ks = Object.keys(data[0] as {});
-	let txt = '';
-	data.forEach((row)=>{
-		if (txt.length>0)txt+='\n';
-		//@ts-ignore
-		const line=JSON.stringify(ks.map((key)=>row[key]));
-		txt = line.substring(1,line.length-1);
-	});
-	Deno.writeTextFileSync(file, txt);
-}
 export interface Usuario {
 	id:string,
 	documento:string,
@@ -44,6 +22,72 @@ export interface Casa {
 	numero:string,
 	boundary:string
 };
+export const TEMPLATE_FATURA = {
+	dataRef:new Date(),
+	dataVenc:new Date(),
+	numeroBoleto:"",
+	valor:0.0,
+	status:cosern.FaturaStatus.UNK,
+} as cosern.Fatura;
+export const TEMPLATE_USUARIO = {
+	id:"",
+	documento:"",
+	cosern_login:"",
+	caern_login:""
+} as Usuario;
+const TEMPLATE_CASA = {
+	house_id:"",
+	cosern_userid:"",
+	codigo_cosern:"",
+	caern_userid:"",
+	inscricao_caern:"",
+	codigo_caern:"",
+	cidade:"",
+	bairro:"",
+	rua:"",
+	numero:"",
+	boundary:""
+} as Casa;
+
+
+function cast_type(x:string ,t:any):any {
+	if (t instanceof Date)
+		return new Date(x);
+	if (typeof t == "boolean")
+		return x.toLowerCase().trim().startsWith("t");
+	if (typeof t == "number") {
+		if (t == 1)
+			return parseInt(x);
+		return parseFloat(x);
+	}
+	return x;
+}
+
+const UPDATE_RATE = 10*24*3600*1000//<ms;
+export function open_csv<T> (file:string, temp:T) {
+	const ks = Object.keys(temp as {});
+	return Deno.readTextFileSync(file).split('\n')
+	.filter((x)=>!x.startsWith("sep=,")&&x.length>1)
+	.map((x)=>{
+		let r:{[p:string]:string} = {};
+		(JSON.parse(`[${x}]`) as string[]).forEach((el, i)=>{
+			//@ts-ignore 7053
+			r[ks[i]] = cast_type(el,temp[ks[i]]);
+		});
+		return r as T;
+	});
+}
+export function save_csv<T> (file:string, data:T[] ,temp:T) {
+	const ks = Object.keys(temp as {});
+	let txt = 'sep=,';
+	data.forEach((row)=>{
+		txt+='\n';
+		//@ts-ignore
+		const line=JSON.stringify(ks.map((key)=>row[key]));
+		txt = line.substring(1,line.length-1);
+	});
+	Deno.writeTextFileSync(file, txt);
+}
 function hasValue(x:string) {
 	x = x.trim();
 	if (x.length < 4) return false;
@@ -66,9 +110,9 @@ export class DB {
 		if (!existsSync(this.dir_caern_boletos))
 			Deno.mkdirSync(this.dir_caern_boletos);
 		this.usuarios = open_csv<Usuario>(path.resolve(dir, 'usuario.csv'),
-			{ id:"",documento:"",cosern_login:"",caern_login:""});
+			TEMPLATE_USUARIO);
 		this.casas = open_csv<Casa>(path.resolve(dir, 'casas.csv'),
-			{house_id:"", cosern_userid:"",codigo_cosern:"",caern_userid:"",inscricao_caern:"",codigo_caern:"",cidade:"",bairro:"",rua:"",numero:"",boundary:""});
+			TEMPLATE_CASA);
 	}
 	async cosern_update_user(user_index:number) {
 		const u = this.usuarios[user_index];
@@ -103,7 +147,7 @@ export class DB {
 			//vencidas
 			const faturas = (await cosern.getFaturas(u.documento, token, casa.codigo_cosern, protocolo)).filter((x)=>x.status == cosern.FaturaStatus.VENCIDA);
 			console.log(`Faturas vencidas: ${faturas.length}`);
-			save_csv<cosern.Fatura>(f_path, faturas);
+			save_csv<cosern.Fatura>(f_path, faturas, TEMPLATE_FATURA);
 			for (let i2 = 0; i2 < faturas.length; i2++) {
 				const fatura = faturas[i2];
 				const fatura_path = path.resolve(this.dir_cosern_boletos,`${casa.codigo_cosern}_${fatura.numeroBoleto}.pdf`);
@@ -151,7 +195,7 @@ export class DB {
 			//faturas
 			const f_path = path.resolve(this.dir_caern_boletos,`${casa.codigo_caern}.csv`);
 			console.log(`Faturas vencidas: ${cu.faturas.length}`);
-			save_csv<cosern.Fatura>(f_path, cu.faturas);
+			save_csv<cosern.Fatura>(f_path, cu.faturas, TEMPLATE_FATURA);
 
 			for (let i2 = 0; i2 < cu.faturas.length; i2++) {
 				const fatura = cu.faturas[i2];
@@ -171,7 +215,10 @@ export class DB {
 				await this.caern_update_user(i);
 		}
 	}
+	async update() {
+		await this.cosern_update();
+		await this.caern_update();
+	}
 }
 const d = new DB("../data");
 console.log(d);
-await d.caern_update();
