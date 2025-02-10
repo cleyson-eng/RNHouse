@@ -1,11 +1,17 @@
-# Sincroniza dados sobre luz e energia com CAERN e COSERN(atual neoenergia)
-Para facilitar o gerenciamento de casas de aluguel com inquilinos que se negam a ter agua e luz em seu nome, esse software, trás uma interface web com geolocalização e cache offline para consultas rápidas em segundos que podem levar varios minutos e verificando residencia a residencia em sites oficiais da CAERN e COSERN.
+# Sincroniza contas de luz (cosern/neoenergia) e energia(caern)
+Para facilitar o gerenciamento de casas de aluguel com inquilinos que se negam a ter agua e luz em seu nome, esse software, trás uma interface web com geolocalização e cache offline para consultas rápidas, levando segundos, que por sites oficiais podem demorar varios minutos e um trabalhor manual tedioso de explorar páginas individuais para cada residencia.
 
 ## Roadmap
 - [x] Sincronizar faturas
 - [ ] Login automático
 - [x] Interface WEB
 - [ ] Mapa
+
+## Uso:
+- requer deno.ts
+- para atualizar: `deno run --allow-all update.ts`, requer login manual, siga as instruções.
+- para interface web: `deno run --allow-all main.ts`, localhost:8080.
+Por ter uso apenas pessoal o cadastro é feito manualmente no usuario.csv e casas.csv na sua pasta de dados...
 
 ## Estruturamento dos dados
 Na pasta de dados:
